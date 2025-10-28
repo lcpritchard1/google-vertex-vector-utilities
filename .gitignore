@@ -182,3 +182,5 @@ cython_debug/
 
 # Misc/Others
 *.idea
+CLAUDE.md
+test.py

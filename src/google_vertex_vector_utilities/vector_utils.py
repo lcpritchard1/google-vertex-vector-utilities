@@ -329,6 +329,66 @@ class VertexVectorHandler:
                 json_responses.append(result)
                 
         return json_responses
+
+    def search_index(self,
+                     vector_ids: list[str],
+                     include_metadata: bool = True,
+                     include_embeddings: bool = False) -> list[dict]:
+        """Searches for vectors by their exact IDs.
+
+          Retrieves specific vectors from the index by their datapoint IDs rather
+          than by similarity search. Useful when you know the exact ID (e.g., a URL)
+          and want to retrieve that vector's data directly.
+
+          Args:
+              vector_ids: List of vector IDs to retrieve (e.g., URLs, document IDs).
+              include_metadata: Whether to include metadata in results.
+              include_embeddings: Whether to include the full embedding vectors in results.
+
+          Returns:
+              A list of dictionaries containing information for each found vector.
+              Each dict contains:
+                  - 'datapoint_id': The ID of the vector.
+                  - 'metadata': (optional) The metadata associated with the vector.
+                  - 'embedding': (optional) The full embedding vector if include_embeddings=True.
+
+          Raises:
+              Exception: If the match client cannot be initialized.
+        """
+        if not self.match_client:
+            try:
+                self.match_client = aiplatform_v1beta1.MatchServiceClient(
+                    client_options={"api_endpoint": self._get_endpoint_url()}
+                )
+
+            except Exception as e:
+                raise e
+
+        request = aiplatform_v1beta1.ReadIndexDatapointsRequest(
+            index_endpoint=self.endpoint_id,
+            deployed_index_id=self.deployment_id,
+            ids=vector_ids
+        )
+
+        response = self.match_client.read_index_datapoints(request=request)
+
+        print(response)
+
+        results = []
+        for datapoint in response.datapoints:
+            result = {
+                "datapoint_id": datapoint.datapoint_id
+            }
+
+            if include_metadata and datapoint.embedding_metadata:
+                result["metadata"] = dict(datapoint.embedding_metadata)
+
+            if include_embeddings and datapoint.feature_vector:
+                result["embedding"] = list(datapoint.feature_vector)
+
+            results.append(result)
+
+        return results
     
     def get_all_ids(self):
         """Returns all resource identifiers.

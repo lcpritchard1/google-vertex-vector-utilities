@@ -276,7 +276,7 @@ wheels = [
 [[package]]
 name = "google-vertex-vector-utilities"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "google-cloud-aiplatform" },
 ]
