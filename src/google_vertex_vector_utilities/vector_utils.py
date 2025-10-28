@@ -372,8 +372,6 @@ class VertexVectorHandler:
 
         response = self.match_client.read_index_datapoints(request=request)
 
-        print(response)
-
         results = []
         for datapoint in response.datapoints:
             result = {
