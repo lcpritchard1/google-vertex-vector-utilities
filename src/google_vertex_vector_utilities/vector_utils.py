@@ -268,6 +268,27 @@ class VertexVectorHandler:
         )
         
         self.index_client.upsert_datapoints(request=request)
+
+    def delete_vector(self,
+                      vector_ids: list[str] | str) -> None:
+        """Deletes vectors from the index by their IDs.
+
+          Removes one or more datapoints from the vector index. This operation
+          is permanent and cannot be undone.
+
+          Args:
+              vector_ids: Either a single vector ID string or a list of vector ID strings
+                  to delete from the index (e.g., URLs or document IDs).
+        """
+        if isinstance(vector_ids, str):
+            vector_ids = [vector_ids]
+
+        request = aiplatform_v1beta1.RemoveDatapointsRequest(
+            index=self.index_id,
+            datapoint_ids=vector_ids
+        )
+
+        self.index_client.remove_datapoints(request=request)
         
     def query_index(self,
                     embedding: list[float],
