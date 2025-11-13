@@ -243,7 +243,8 @@ class VertexVectorHandler:
     def insert_vector(self,
                       vector_id: str,
                       vector_embedding: list[float],
-                      vector_metadata: dict[str, str]) -> None:
+                      vector_filters: list[dict[str, list[str]]] = None,
+                      vector_metadata: dict[str, str] = None) -> None:
         """Inserts a vector into the index.
         
         Upserts a single vector embedding with associated metadata into the
@@ -252,19 +253,42 @@ class VertexVectorHandler:
         Args:
             vector_id: Unique identifier for the vector.
             vector_embedding: The vector embedding values.
+            vector_filters: A list of namespace: allow_list pairs for filtered searching
             vector_metadata: Key-value pairs of metadata associated with the vector.
         """
-        datapoint = [
-            IndexDatapoint(
-                datapoint_id=vector_id,
-                feature_vector=vector_embedding,
-                embedding_metadata=vector_metadata
-            )
-        ]
+
+        restrictions = []
+        if vector_filters:
+            for vfil in vector_filters:
+                if vfil.get("allow_list") and len(vfil.get("allow_list")) > 0:
+                    allow_list = [str(item) for item in vfil.get("allow_list") if item]
+
+                    if allow_list:
+                        restriction = IndexDatapoint.Restriction(
+                            namespace=str(vfil.get("namespace")),
+                            allow_list=allow_list
+                        )
+                        restrictions.append(restriction)
+
+        datapoint_kwargs = {
+            "datapoint_id": vector_id,
+            "feature_vector": vector_embedding,
+        }
+
+        if restrictions:
+            datapoint_kwargs["restricts"] = restrictions
+
+        if vector_metadata:
+            from google.protobuf import struct_pb2
+            metadata_struct = struct_pb2.Struct()
+            metadata_struct.update(vector_metadata)
+            datapoint_kwargs["embedding_metadata"] = metadata_struct
+
+        datapoint = IndexDatapoint(**datapoint_kwargs)
         
         request = aiplatform_v1beta1.UpsertDatapointsRequest(
             index=self.index_id,
-            datapoints=datapoint
+            datapoints=[datapoint]
         )
         
         self.index_client.upsert_datapoints(request=request)
