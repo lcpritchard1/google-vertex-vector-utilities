@@ -316,7 +316,7 @@ class VertexVectorHandler:
         
     def query_index(self,
                     embedding: list[float],
-                    query_filters: list[dict[str, list[str]]] = None,
+                    query_filters: list[dict[str, str | list[str]]] = None,
                     num_results: int = 10,
                     include_metadata: bool = True) -> list[dict]:
         """Queries the index for similar vectors.
