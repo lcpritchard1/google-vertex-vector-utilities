@@ -316,6 +316,7 @@ class VertexVectorHandler:
         
     def query_index(self,
                     embedding: list[float],
+                    query_filters: list[dict[str, list[str]]] = None,
                     num_results: int = 10,
                     include_metadata: bool = True) -> list[dict]:
         """Queries the index for similar vectors.
@@ -325,6 +326,8 @@ class VertexVectorHandler:
         
         Args:
             embedding: The query vector embedding.
+            query_filters: Optional list of filter dicts for restricting search
+                Example: [{"namespace": "vendor", "allow_list": ["Nike", "Adidas"]}]
             num_results: Number of nearest neighbors to return.
             include_metadata: Whether to include metadata in results.
             
@@ -344,10 +347,32 @@ class VertexVectorHandler:
                 )
             except Exception as e: # TODO Fix whatever this is
                 raise e
-            
-        datapoint = IndexDatapoint(
-            feature_vector=embedding
-        )
+
+        restricts = []
+        if query_filters:
+            for qfil in query_filters:
+                namespace = qfil.get("namespace")
+                allow_list = qfil.get("allow_list")
+
+                if namespace and allow_list and len(allow_list) > 0:
+                    cleaned_list = [str(item) for item in allow_list if item]
+
+                    if cleaned_list:
+                        restricts.append(
+                            IndexDatapoint.Restriction(
+                                namespace=str(namespace),
+                                allow_list=cleaned_list
+                            )
+                        )
+
+        datapoint_kwargs = {
+            "feature_vector": embedding
+        }
+
+        if restricts:
+            datapoint_kwargs["restricts"] = restricts
+
+        datapoint = IndexDatapoint(**datapoint_kwargs)
         
         query = aiplatform_v1beta1.FindNeighborsRequest.Query(
             datapoint=datapoint,
