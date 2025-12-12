@@ -5,6 +5,8 @@ from google_vertex_vector_utilities.vector_utils import (
     ShardSize,
 )
 
-__version__ = "0.1.0"
+from google_vertex_vector_utilities.async_vector_utils import AsyncVectorHandler
 
-__all__ = ["VertexVectorHandler", "ShardSize"]
+__version__ = "0.2.0"
+
+__all__ = ["VertexVectorHandler", "AsyncVectorHandler", "ShardSize"]
