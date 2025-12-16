@@ -15,6 +15,8 @@ from google.cloud.aiplatform_v1beta1.types import IndexDatapoint
 from typing import Optional, Any
 from enum import Enum
 
+from proto.message import Parse
+
 class ShardSize(Enum):
     """Shard size options for vector index creation."""
     SMALL = "SHARD_SIZE_SMALL"
@@ -292,6 +294,64 @@ class VertexVectorHandler:
         )
         
         self.index_client.upsert_datapoints(request=request)
+
+    def batch_insert(
+        self,
+        datapoints: list[dict],
+        batch_size: int = 100
+    ) -> int:
+        total_upserted = 0 
+
+        for i in range(0, len(datapoints), batch_size):
+            batch = datapoints[i:i + batch_size]
+
+            formatted = []
+            for dp in batch:
+                restrictions = []
+
+                if dp.get("vector_filters"):
+                    for vfil in dp.get("vector_filters"): # type:ignore
+                        if vfil.get("allow_list") and len(vfil.get("allow_list")) > 0:
+                            allow_list = [
+                                str(item) for item in vfil.get("allow_list") if item
+                            ]
+                            if allow_list:
+                                restrictions.append(
+                                    IndexDatapoint.Restriction(
+                                        namespace = str(vfil.get("namespace")),
+                                        allow_list = allow_list
+                                    )
+                                )
+
+                datapoint_kwargs = {
+                    "datapoint_id": dp.get("vector_id"),
+                    "feature_vector": dp.get("vector_embedding")
+                }
+
+                if restrictions:
+                    datapoint_kwargs.update({
+                        "restricts": restrictions
+                    })
+
+                if dp.get("vector_metadata"):
+                    from google.protobuf import struct_pb2
+                    metadata_struct = struct_pb2.Struct()
+                    metadata_struct.update(dp.get("vector_metadata")) # type:ignore
+                    datapoint_kwargs.update({
+                        "embedding_metadata": metadata_struct
+                    })
+
+                formatted.append(IndexDatapoint(**datapoint_kwargs)) # type:ignore
+
+            request = aiplatform_v1beta1.UpsertDatapointsRequest(
+                index = self.index_id,
+                datapoints = formatted
+            )
+
+            self.index_client.upsert_datapoints(request = request)
+            total_upserted += len(batch)
+
+        return total_upserted
 
     def delete_vector(self,
                       vector_ids: list[str] | str) -> None:
